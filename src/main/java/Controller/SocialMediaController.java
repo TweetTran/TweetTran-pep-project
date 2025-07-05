@@ -22,7 +22,7 @@ public class SocialMediaController {
      */
     public Javalin startAPI() {
 
-        Javalin app = Javalin.create().start(8080);
+        Javalin app = Javalin.create();
 
         // account action endpoint
         app.post("/login", this::loginPost);
@@ -56,7 +56,7 @@ public class SocialMediaController {
             Account account = om.readValue(ctx.body(), Account.class);
             Account savedAccount = as.accountRegister(account);
             if (savedAccount != null) {
-                ctx.status(201);
+                ctx.status(200);
                 ctx.json(savedAccount);
             } else {
                 ctx.status(400);
@@ -78,18 +78,24 @@ public class SocialMediaController {
                 ctx.status(401);
             }
         } catch (Exception e) {
-            ctx.status(400);
+            ctx.status(401);
         }
     }
 
     // message handlers
     private void getAllMessage(Context ctx) {
-    ctx.json(ms.getAllMessages());
+        ctx.status(200);
+        ctx.json(ms.getAllMessages());
     }
 
     private void postMessage(Context ctx) {
         try {
             Message msg = om.readValue(ctx.body(), Message.class);
+            
+            if (msg.getMessage_text() == null || msg.getMessage_text().isBlank() || msg.getMessage_text().length() > 255) {
+                ctx.status(400);
+                return;
+            }   
             Message created = ms.createMessage(msg.getPosted_by(), msg);
             if (created != null) {
                 ctx.status(200);
@@ -112,9 +118,10 @@ public class SocialMediaController {
             }
             Message updated = ms.updateSMSByID(id, body.getMessage_text());
             if (updated != null) {
+                ctx.status(200);
                 ctx.json(updated);
             } else {
-                ctx.status(400);
+                ctx.status(400); 
             }
         } catch (Exception e) {
             ctx.status(400);
@@ -124,26 +131,29 @@ public class SocialMediaController {
         int id = Integer.parseInt(ctx.pathParam("message_id"));
         Message msg = ms.searchSMSByID(id);
         if (msg != null) {
+            ctx.status(200);
             ctx.json(msg);
         }
         else {
-            ctx.status(200);
+            ctx.status(100);
         }
     }
 
     private void removeMessageFromID(Context ctx) {
         int id = Integer.parseInt(ctx.pathParam("message_id"));
         Message deleted = ms.deleteSMSByID(id);
-        if (deleted != null){
-            ctx.json(deleted);
-        }
-        else {
+        if (deleted != null) {
+            ctx.status(200);          
+            ctx.json(deleted);       
+        } else {
             ctx.status(200);
+            ctx.result("");        
         }
     }
 
     private void getMessageFromUser(Context ctx) {
         int userId = Integer.parseInt(ctx.pathParam("account_id"));
+        ctx.status(200);
         ctx.json(ms.getUserMessages(userId));
     }
 

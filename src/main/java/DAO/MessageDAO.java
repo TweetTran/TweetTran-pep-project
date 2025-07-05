@@ -126,8 +126,8 @@ public class MessageDAO implements MessageDaoInterface{
             String sql = "UPDATE message SET message_text = ? WHERE message_id = ?";
             PreparedStatement ps = conn.prepareStatement(sql);
             // set up the parameter for user input 
-            ps.setInt(1, message_id);
-            ps.setString(2, message_updated);
+            ps.setString(1, message_updated);
+            ps.setInt(2, message_id);
             int updated = ps.executeUpdate();
             if (updated > 0) {
                 // Fetch and return updated message
@@ -151,28 +151,31 @@ public class MessageDAO implements MessageDaoInterface{
 }
 
     @Override
-    public Message createMessage(Message message) {
-        try (Connection conn = ConnectionUtil.getConnection()) {
-            String sql = "INSERT INTO message (posted_by, message_text, time_posted_epoch) VALUES (?, ?, ?)";
-            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            // input statement
-            ps.setInt(1, message.getPosted_by());
-            ps.setString(2, message.getMessage_text());
-            ps.setLong(3, System.currentTimeMillis());
+public Message createMessage(Message message) {
+    try (Connection conn = ConnectionUtil.getConnection()) {
+        String sql = "INSERT INTO message (posted_by, message_text, time_posted_epoch) VALUES (?, ?, ?)";
+        PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+        
+        long epochSeconds = System.currentTimeMillis() / 1000;
 
-            int newRow = ps.executeUpdate();
-            if (newRow > 0) {
-                ResultSet rs = ps.getGeneratedKeys();
-                if (rs.next()) {
-                    message.setMessage_id(rs.getInt(1));
-                    message.setTime_posted_epoch(System.currentTimeMillis());
-                    return message;
-                }
+        ps.setInt(1, message.getPosted_by());
+        ps.setString(2, message.getMessage_text());
+        ps.setLong(3, epochSeconds);
+
+        int newRow = ps.executeUpdate();
+        if (newRow > 0) {
+            ResultSet rs = ps.getGeneratedKeys();
+            if (rs.next()) {
+                message.setMessage_id(rs.getInt(1));
+                message.setTime_posted_epoch(epochSeconds);
+                return message;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
-        return null;
+    } catch (Exception e) {
+        e.printStackTrace();
     }
+    return null;
+}
+
 
 }
