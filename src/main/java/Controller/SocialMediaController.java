@@ -135,7 +135,7 @@ public class SocialMediaController {
             ctx.json(msg);
         }
         else {
-            ctx.status(100);
+            ctx.status(200).result("");
         }
     }
 

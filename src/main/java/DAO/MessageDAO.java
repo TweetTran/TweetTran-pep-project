@@ -92,28 +92,33 @@ public class MessageDAO implements MessageDaoInterface{
 
 
     @Override
-    public Message deleteSMSByID(int message_id) {  
-        try (Connection conn = ConnectionUtil.getConnection()){
-            String sql = ("DELETE FROM message WHERE message_id= ?");
-            PreparedStatement ps = conn.prepareStatement(sql);
-            // set up the parameter for user input 
-            ps.setInt(1, message_id);
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()){
-                // set up the single found message by id 
+    public Message deleteSMSByID(int message_id) {
+        try (Connection conn = ConnectionUtil.getConnection()) {
+            // First, fetch the message
+            String fetchSql = "SELECT * FROM message WHERE message_id = ?";
+            PreparedStatement fetchPs = conn.prepareStatement(fetchSql);
+            fetchPs.setInt(1, message_id);
+            ResultSet rs = fetchPs.executeQuery();
+
+            if (rs.next()) {
                 Message message = new Message(
-                rs.getInt("message_id"),
-                rs.getInt("posted_by"),
-                rs.getString("message_text"),
-                rs.getLong("time_posted_epoch")
+                    rs.getInt("message_id"),
+                    rs.getInt("posted_by"),
+                    rs.getString("message_text"),
+                    rs.getLong("time_posted_epoch")
                 );
+
+                // Then, delete it
+                String deleteSql = "DELETE FROM message WHERE message_id = ?";
+                PreparedStatement deletePs = conn.prepareStatement(deleteSql);
+                deletePs.setInt(1, message_id);
+                deletePs.executeUpdate();
+
                 return message;
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        //return null if none found
         return null;
     }
 
@@ -151,31 +156,35 @@ public class MessageDAO implements MessageDaoInterface{
 }
 
     @Override
-public Message createMessage(Message message) {
-    try (Connection conn = ConnectionUtil.getConnection()) {
-        String sql = "INSERT INTO message (posted_by, message_text, time_posted_epoch) VALUES (?, ?, ?)";
-        PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-        
-        long epochSeconds = System.currentTimeMillis() / 1000;
+    public Message createMessage(Message message) {
+        try (Connection conn = ConnectionUtil.getConnection()) {
+            String sql = "INSERT INTO message (posted_by, message_text, time_posted_epoch) VALUES (?, ?, ?)";
+            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
 
-        ps.setInt(1, message.getPosted_by());
-        ps.setString(2, message.getMessage_text());
-        ps.setLong(3, epochSeconds);
-
-        int newRow = ps.executeUpdate();
-        if (newRow > 0) {
-            ResultSet rs = ps.getGeneratedKeys();
-            if (rs.next()) {
-                message.setMessage_id(rs.getInt(1));
-                message.setTime_posted_epoch(epochSeconds);
-                return message;
+            // If the client didn't provide a timestamp (or it is zero), default to current time
+            long timestamp = message.getTime_posted_epoch();
+            if (timestamp == 0) {
+                timestamp = System.currentTimeMillis();
+                message.setTime_posted_epoch(timestamp);
             }
+
+            ps.setInt(1, message.getPosted_by());
+            ps.setString(2, message.getMessage_text());
+            // Instead of setting time_posted_epoch to current time:
+            ps.setLong(3, message.getTime_posted_epoch());
+
+
+            int newRow = ps.executeUpdate();
+            if (newRow > 0) {
+                ResultSet rs = ps.getGeneratedKeys();
+                if (rs.next()) {
+                    message.setMessage_id(rs.getInt(1));
+                    return message;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    } catch (Exception e) {
-        e.printStackTrace();
+        return null;
     }
-    return null;
-}
-
-
 }
